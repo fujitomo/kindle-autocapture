@@ -36,9 +36,14 @@ def collect_ordered_images(session_dir: Path) -> List[Path]:
     return [p for _, p in items]
 
 
-def _to_rgb(im: Image.Image) -> Image.Image:
+def _to_rgb_detached(im: Image.Image) -> Image.Image:
+    """元の `Image.open` ハンドルから切り離した RGB 画像を返す。
+
+    `with Image.open(...) as im:` を抜けるとファイルが閉じられるため、
+    必ず新しいオブジェクトを返してメモリ上に展開しておく。
+    """
     if im.mode == "RGB":
-        return im
+        return im.copy()
     if im.mode == "RGBA":
         bg = Image.new("RGB", im.size, (255, 255, 255))
         bg.paste(im, mask=im.split()[3])
@@ -50,8 +55,7 @@ def _to_rgb(im: Image.Image) -> Image.Image:
         return bg
     if im.mode == "P":
         if "transparency" in im.info:
-            im = im.convert("RGBA")
-            return _to_rgb(im)
+            return _to_rgb_detached(im.convert("RGBA"))
         return im.convert("RGB")
     return im.convert("RGB")
 
@@ -67,10 +71,21 @@ def build_session_pdf(session_dir: Path, pdf_path: Path) -> int:
         return 0
 
     images_rgb: list[Image.Image] = []
+    skipped: list[Path] = []
     try:
         for p in paths:
-            with Image.open(p) as im:
-                images_rgb.append(_to_rgb(im))
+            try:
+                with Image.open(p) as im:
+                    im.load()
+                    images_rgb.append(_to_rgb_detached(im))
+            except Exception as e:
+                skipped.append(p)
+                log.warning("PDF: 画像を読めずスキップ %s: %s", p, e)
+
+        if not images_rgb:
+            raise RuntimeError(
+                f"読み込める画像が 1 枚もありません（候補 {len(paths)} 件、すべてスキップ）"
+            )
 
         pdf_path.parent.mkdir(parents=True, exist_ok=True)
         first, *rest = images_rgb
@@ -81,7 +96,13 @@ def build_session_pdf(session_dir: Path, pdf_path: Path) -> int:
             save_all=True,
             append_images=rest,
         )
-        log.info("PDF 作成: %s (%d ページ)", pdf_path, len(images_rgb))
+        if skipped:
+            log.info(
+                "PDF 作成: %s (%d ページ, スキップ %d)",
+                pdf_path, len(images_rgb), len(skipped),
+            )
+        else:
+            log.info("PDF 作成: %s (%d ページ)", pdf_path, len(images_rgb))
         return len(images_rgb)
     finally:
         for im in images_rgb:

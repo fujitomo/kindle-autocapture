@@ -20,6 +20,7 @@ hiddenimports += [
     "win32api",
     "win32con",
     "win32gui",
+    "win32ui",
     "win32process",
     "imagehash",
     "keyboard",

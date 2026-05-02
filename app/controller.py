@@ -138,8 +138,16 @@ class CaptureController(QObject):
             click_y_offset=cfg.navigation.click_y_offset,
             refocus_before_action=cfg.navigation.refocus_before_action,
         )
+        dup_thresh = int(cfg.capture.duplicate_threshold)
+        if dup_thresh > 6:
+            self._emit_log(
+                "WARNING",
+                f"pHash 重複閾値が {dup_thresh} です。"
+                " 隣接ページが distance≈4〜6 の本では全ページスキップされます。"
+                " 設定 → キャプチャ の「pHash 重複閾値」を 3 以下に下げることを推奨します。",
+            )
         self._duplicate = DuplicateDetector(
-            duplicate_threshold=cfg.capture.duplicate_threshold,
+            duplicate_threshold=dup_thresh,
             last_page_max_distance=cfg.capture.last_page_max_hash_distance,
         )
 
@@ -227,9 +235,15 @@ class CaptureController(QObject):
                         self.errorOccurred.emit("キャプチャ中にウィンドウ座標が無効化されました")
                         break
 
-                # キャプチャ
+                # キャプチャ（PrintWindow で他ウィンドウの重なりを除外できる）
+                info_cap = self._finder.get_window_info(request.hwnd) or info
+                use_pw = bool(getattr(cfg.capture, "use_printwindow", True))
                 try:
-                    img = self._capturer.capture(region)
+                    img = self._capturer.capture(
+                        region,
+                        target_hwnd=request.hwnd if use_pw else None,
+                        client_rect_screen=info_cap.client_rect if use_pw else None,
+                    )
                 except Exception as e:
                     consecutive_capture_errors += 1
                     self._emit_log("ERROR", f"キャプチャ失敗 ({consecutive_capture_errors}/3): {e}")
@@ -343,7 +357,8 @@ class CaptureController(QObject):
                         self._emit_log("INFO", f"PDF を保存しました ({pages} ページ): {pdf_path}")
                 except Exception as e:
                     log.exception("PDF 生成失敗")
-                    self._emit_log("ERROR", f"PDF 生成に失敗しました: {e}")
+                    detail = f"{type(e).__name__}: {e}" if str(e) else type(e).__name__
+                    self._emit_log("ERROR", f"PDF 生成に失敗しました: {detail}")
 
             elapsed = time.time() - (self._start_time or time.time())
             summary = (

@@ -84,6 +84,11 @@ class SettingsDialog(QDialog):
 
         self.spin_dup_thresh = QSpinBox()
         self.spin_dup_thresh.setRange(0, 64)
+        self.spin_dup_thresh.setToolTip(
+            "この距離以下を「同じページ」とみなし保存をスキップします（hash_size=16 の場合 256bit 中の差分ビット数）。\n"
+            "大きすぎると隣接ページが重複扱いになり全スキップされます。\n"
+            "推奨: 3（完全一致に近いものだけスキップ）。ページが飛ぶ場合は 2 以下にしてください。"
+        )
         form.addRow("pHash 重複閾値（スキップ送り用）:", self.spin_dup_thresh)
 
         self.spin_last_page_dist = QSpinBox()
@@ -116,6 +121,14 @@ class SettingsDialog(QDialog):
             "ページ送りが Kindle に届いていないときの無限ループ防止です。"
         )
         form.addRow("重複スキップ連続の上限(保存なし):", self.spin_max_dup_skips)
+
+        self.chk_printwindow = QCheckBox("ウィンドウ内容のみ取得（PrintWindow・重なり除外）")
+        self.chk_printwindow.setToolTip(
+            "オン: Kindle ウィンドウの描画だけを取り、Cursor など他ウィンドウが重なっても写しません。\n"
+            "オフ: 画面の矩形をそのまま取ります（従来どおり）。\n"
+            "※ 真っ黒になる環境ではオフを試してください。"
+        )
+        form.addRow(self.chk_printwindow)
 
         return w
 
@@ -233,6 +246,7 @@ class SettingsDialog(QDialog):
         self.spin_consec_dupes.setValue(c.capture.last_page_consecutive_dupes)
         self.spin_min_cap_last.setValue(c.capture.min_captures_before_last_page_stop)
         self.spin_max_dup_skips.setValue(c.capture.max_duplicate_skips_without_save)
+        self.chk_printwindow.setChecked(bool(getattr(c.capture, "use_printwindow", True)))
 
         self.cmb_nav_method.setCurrentText(c.navigation.method)
         self.edit_nav_key.setText(c.navigation.key)
@@ -279,6 +293,7 @@ class SettingsDialog(QDialog):
                 "last_page_consecutive_dupes": self.spin_consec_dupes.value(),
                 "min_captures_before_last_page_stop": self.spin_min_cap_last.value(),
                 "max_duplicate_skips_without_save": self.spin_max_dup_skips.value(),
+                "use_printwindow": self.chk_printwindow.isChecked(),
             },
             navigation={
                 "method": self.cmb_nav_method.currentText(),

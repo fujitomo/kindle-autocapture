@@ -34,7 +34,10 @@ class CaptureConfig:
     jpeg_quality: int = 95
     webp_quality: int = 95
     skip_duplicates: bool = True
-    duplicate_threshold: int = 8  # pHash ハミング距離（重複スキップ用・緩め）
+    # pHash ハミング距離（重複スキップ用）。
+    # 隣接ページが distance=4〜6 になる本では 8 だと全ページスキップされる。
+    # hash_size=16（256bit）基準で「完全に同じ画面だけをスキップ」したいなら 3 以下が安全。
+    duplicate_threshold: int = 3
     auto_stop_on_last_page: bool = True
     # 最終ページ用ストリークに加算するのは「この距離以下」のときだけ（隣接ページが distance≈4 になり得る）
     last_page_max_hash_distance: int = 2
@@ -47,6 +50,9 @@ class CaptureConfig:
     auto_trim: bool = False
     # 実行中は本アプリを最小化して Kindle にフォーカスを譲る（ページ送りが効かない時の決定打）
     minimize_during_capture: bool = True
+    # True: PrintWindow でクライアント領域のみ取得（Cursor 等が Kindle 上に重なっても写らない）
+    # False: 従来どおり画面の矩形を BitBlt（重なったウィンドウが写る）
+    use_printwindow: bool = True
 
 
 @dataclass
