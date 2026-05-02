@@ -83,6 +83,9 @@ class StorageConfig:
     book_subfolder_template: str = "book_{timestamp}"
     file_template: str = "page_{index:04d}"
     resume_from_existing: bool = True
+    # セッション終了時に連番画像から 1 冊の PDF を自動生成（セッションフォルダ直下）
+    auto_pdf: bool = True
+    pdf_filename: str = "book.pdf"
 
 
 @dataclass

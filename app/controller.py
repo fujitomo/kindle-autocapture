@@ -19,6 +19,7 @@ from capture.window_finder import WindowFinder
 from config.config_manager import AppConfig, ConfigManager
 from navigation.page_navigator import PageNavigator
 from storage.image_saver import ImageSaver
+from storage.pdf_assembler import build_session_pdf
 from utils.logger import get_logger
 
 from .states import CaptureState, StopReason
@@ -112,6 +113,7 @@ class CaptureController(QObject):
     # ---------------- core loop ----------------
     def _run_loop(self, request: CaptureRequest) -> None:
         cfg: AppConfig = ConfigManager().config
+        session_dir: Optional[Path] = None
 
         # 古い config.json に "right" / "left" / "pageup" 系の逆方向キーが残っていると
         # ページが逆送りになるため、安全なキーかどうかを検証してから使う
@@ -325,9 +327,28 @@ class CaptureController(QObject):
                         break
 
         finally:
+            cfg_end = ConfigManager().config
+            pdf_line = ""
+            if (
+                session_dir is not None
+                and self._captured_count > 0
+                and bool(getattr(cfg_end.storage, "auto_pdf", True))
+            ):
+                pdf_name = str(getattr(cfg_end.storage, "pdf_filename", None) or "book.pdf").strip() or "book.pdf"
+                pdf_path = session_dir / pdf_name
+                try:
+                    pages = build_session_pdf(session_dir, pdf_path)
+                    if pages > 0:
+                        pdf_line = f"\nPDF: {pdf_path}"
+                        self._emit_log("INFO", f"PDF を保存しました ({pages} ページ): {pdf_path}")
+                except Exception as e:
+                    log.exception("PDF 生成失敗")
+                    self._emit_log("ERROR", f"PDF 生成に失敗しました: {e}")
+
             elapsed = time.time() - (self._start_time or time.time())
             summary = (
                 f"取得 {self._captured_count} 枚 / 経過 {elapsed:.1f}秒 / 理由: {stop_reason.label}"
+                f"{pdf_line}"
             )
             self._emit_log("INFO", summary)
             self._set_state(CaptureState.IDLE)

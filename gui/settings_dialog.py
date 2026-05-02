@@ -206,6 +206,16 @@ class SettingsDialog(QDialog):
         self.chk_resume = QCheckBox("既存ファイル番号から再開する")
         form.addRow(self.chk_resume)
 
+        self.chk_auto_pdf = QCheckBox("セッション終了時に PDF を自動生成")
+        self.chk_auto_pdf.setToolTip(
+            "取得した連番画像を 1 つの PDF にまとめ、セッションフォルダに保存します。"
+        )
+        form.addRow(self.chk_auto_pdf)
+
+        self.edit_pdf_name = QLineEdit()
+        self.edit_pdf_name.setPlaceholderText("book.pdf")
+        form.addRow("PDF ファイル名:", self.edit_pdf_name)
+
         return w
 
     # ---------------- load/save ----------------
@@ -251,6 +261,8 @@ class SettingsDialog(QDialog):
         self.edit_subfolder.setText(c.storage.book_subfolder_template)
         self.edit_filetpl.setText(c.storage.file_template)
         self.chk_resume.setChecked(c.storage.resume_from_existing)
+        self.chk_auto_pdf.setChecked(bool(getattr(c.storage, "auto_pdf", True)))
+        self.edit_pdf_name.setText(getattr(c.storage, "pdf_filename", "book.pdf"))
 
     def _on_accept(self) -> None:
         self._mgr.update(
@@ -288,6 +300,8 @@ class SettingsDialog(QDialog):
                 "book_subfolder_template": self.edit_subfolder.text().strip() or "book_{timestamp}",
                 "file_template": self.edit_filetpl.text().strip() or "page_{index:04d}",
                 "resume_from_existing": self.chk_resume.isChecked(),
+                "auto_pdf": self.chk_auto_pdf.isChecked(),
+                "pdf_filename": self.edit_pdf_name.text().strip() or "book.pdf",
             },
         )
         self.accept()
