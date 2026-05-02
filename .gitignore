@@ -1,0 +1,30 @@
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+.venv/
+venv/
+env/
+.env
+
+build/
+dist/
+*.spec.bak
+
+logs/
+output/
+*.log
+
+.vscode/
+.idea/
+*.code-workspace
+
+.DS_Store
+Thumbs.db
+
+# IDE / local tooling
+.cursor/
+
+# PyInstaller / packaging
+*.exe
